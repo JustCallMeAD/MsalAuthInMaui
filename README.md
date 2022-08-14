@@ -335,8 +335,31 @@ Our Web API application is secure!
 
 #### Deploy ASP.NET Core Web API to Azure
 
+Right-click on the *SecureWebApi.csproj* file, and select `Publish...`, then follow the following steps:
 
+![Publish...](images/553508ccf0991417dd916a66073673723243ac4d061cc711e891aeadafecbdc5.png)  
 
+![Azure](images/8b04511a8728a394f74d86c18fac5879778a17fb4a8f0e8764006bfa0a96e25f.png)  
+
+![Azure App Service (Windows)](images/d6552c83cfdc5286942b854d4a006c0497d526d58bebef42b65c0a91e6122c24.png)  
+
+![Create New](images/e9cfea77e251b2f0d8b716d3a955e9898611f2372d8d0b247d4732d74fce5be0.png)  
+
+![Create New App Service (Windows)](images/b262f876d8d5d1d71616c75e7710f34554a1075b3fb61c73636b57986c4c351e.png)  
+
+![App Service](images/3101c888647cbd59c2814669101cfad27e870f945242b04e989b87b95fa19cb7.png)  
+
+![API Management](images/d0eea2f4bdf432973fed496c68cb489782aa8dfe6d67c6ba67250fe4f200c5f2.png)  
+
+![Finish](images/e82d9caabdc2288cf07bc393551a493d83923af8db36c81c678d3422645bfebb.png)  
+
+![Publish](images/8c56a403962cf16a530588b93dfe76748740a8528027137f84a839605f3990b2.png)  
+
+![Publish succeeded](images/0d655241e67a68508ea91913aa81b5064d749ca6d39686d1b1a0da2a32f064d0.png)  
+
+![Web API in Azure](images/8469078e74fd051cfe9364139b240d64c9991e7979e3130b03021faccf4f2f53.png)  
+
+![Unauthorized 401](images/c7766a80e5475bc3e231cf4266fb3b312148d63a5d55a0e3cf4f97860269d569.png)  
 
 ## Summary
 
