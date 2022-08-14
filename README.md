@@ -12,6 +12,8 @@
       - [Secure ASP.NET Core Web API](#secure-aspnet-core-web-api)
       - [Azure AD B2C App Registration](#azure-ad-b2c-app-registration)
       - [Deploy ASP.NET Core Web API to Azure](#deploy-aspnet-core-web-api-to-azure)
+      - [Configure Azure AD B2C Scope](#configure-azure-ad-b2c-scope)
+      - [Set API Permissions](#set-api-permissions)
   - [Summary](#summary)
   - [Complete Code](#complete-code)
   - [Resources](#resources)
@@ -297,7 +299,7 @@ This will generate a client secret. Copy the value, paste it under the `"ClientS
 
 >:warning: The client secret will only display at this moment; if you move to another screen, you will not be able to retrieve the value anymore. You may choose to store this value safely at this point in `Azure Key Vault`, or some other safe location. If you lose it, you will have to create a new client secret.
 
-Finally, set the `"Scopes"` value to `"access_as_user"` which we are going to configure in `Azure AD B2C` after we deploy our application to Azure in the next section.
+Finally, set the `"Scopes"` value to `"access_as_user"`, which we are going to configure in `Azure AD B2C` in the [Configure Azure AD B2C Scope](#configure-azure-ad-b2c-scope) section, after we deploy our application to Azure.
 
 The complete *appsettings.json* should look like this:
 
@@ -360,6 +362,36 @@ Right-click on the *SecureWebApi.csproj* file, and select `Publish...`, then fol
 ![Web API in Azure](images/8469078e74fd051cfe9364139b240d64c9991e7979e3130b03021faccf4f2f53.png)  
 
 ![Unauthorized 401](images/c7766a80e5475bc3e231cf4266fb3b312148d63a5d55a0e3cf4f97860269d569.png)  
+
+#### Configure Azure AD B2C Scope
+
+Now, we need to create our `access_as_user` scope we specified in the *appsettings.json* file.
+
+Go back to the Azure portal, select `Expose an API`, then click on `+ Add a scope`, leave the default value for `Application ID URI`, and click `Save and continue`.
+
+![Add a scope](images/f98c096382426e943c7e3f655f48eac7aae1b974925f1b40b3b32c5290421bf9.png)
+
+Fill-in the required values as shown below, and click on `Add scope`:
+
+![Add scope values](images/9e6addc9882442d0d7d931cde7c1ab6e62ffe09749ba80f409859b1b72235e20.png)
+
+The `access_as_user` scope has been added.
+
+![Scope](images/2ce3049cffbe6069f2633b8946e9c38cf7cfc2cc3e9462318d848486f0a4aa56.png)  
+
+#### Set API Permissions
+
+Finally, we need to set the `API Permissions`, so our `MAUI` application can call the Web API with an access token, after authentication.
+
+In order to do that, click on `API permissions`, then `+ Add a permission`. Select `My APIs`, and click on `MsalAuthInMaui`.
+
+![Add a permission](images/a54d3d778ffc5b2999efffa622f91d2840ea5a287037a7649d482316662a2566.png)  
+
+Then keep the `Delegated permissions` selected, check the `access_as_user` permission, and click on `Add permissions`.
+
+![Delegated permission](images/d3bb36319281fd4cfbe0b26eada95a7bf3ee7969a1ca239fa688a7b77b01cc9a.png)
+
+![API permission](images/c56d9962078685ec5ee81e159643af45f1ebf43794023eab8c8f6e4ba32e7cdd.png)  
 
 ## Summary
 
