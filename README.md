@@ -7,7 +7,11 @@
     - [Visual Studio 2022](#visual-studio-2022)
     - [Required Workloads](#required-workloads)
   - [Demo](#demo)
-    - [Create a secure ASP.NET Core Web API Application](#create-a-secure-aspnet-core-web-api-application)
+    - [Secure ASP.NET Core Web API Application](#secure-aspnet-core-web-api-application)
+      - [ASP.NET Core Web API Application](#aspnet-core-web-api-application)
+      - [Secure ASP.NET Core Web API](#secure-aspnet-core-web-api)
+      - [Azure AD B2C App Registration](#azure-ad-b2c-app-registration)
+      - [Deploy ASP.NET Core Web API to Azure](#deploy-aspnet-core-web-api-to-azure)
   - [Summary](#summary)
   - [Complete Code](#complete-code)
   - [Resources](#resources)
@@ -50,14 +54,22 @@ In the following demo we will perform the following actions:
 
 1. Create a secure `ASP.NET Core Web API` application
 2. Deploy the `ASP.NET Core Web API` application in Azure
-3. Create and configure an `Azure B2C` app registration to provide authentication workflows
+3. Create and configure an `Azure AD B2C` app registration to provide authentication workflows
 4. Create a `.NET MAUI` application
 5. Configure our `.NET MAUI` application to authenticate users and get an access token
 6. Call our secure `ASP.NET Core Web API` application from our `.NET MAUI` application
 
 As you can see there are many steps in this demo, so let's get to it.
 
-### Create a secure ASP.NET Core Web API Application
+### Secure ASP.NET Core Web API Application
+
+In this demo, we are going to start by creating an `ASP.NET Core Web API ` application using the default template, which will not be secure. We are going to make it secure by using the `Microsoft identity` platform.
+
+We will create an `Azure AD B2C` app registration to provide an authentication flow, and configure our `ASP.NET Core Web API` application to use it.
+
+And finally, we will deploy the `ASP.NET Core Web API` application to Azure.
+
+#### ASP.NET Core Web API Application
 
 ![Create a new ASP.NET Core Web API project](images/e735adc8086673e19e0b451f7e5530b1b15d2813ed7cb7baa561628baae02fd6.png)  
 
@@ -73,13 +85,256 @@ Run the application to make sure the default templates is working.
 
 ![Swagger](images/c4e367405fe55e086ab137bceadeb459658f1ae989aa1340a1aa1bc93c361937.png)  
 
-Expand `GET /WeatherForecast`, click on `Try it out`, then on `Execute`.
+Expand `GET /weatherforecast`, click on `Try it out`, then on `Execute`.
 
 ![WeatherForecast](images/0e3cb4491bc38c9171d5b0d069bd8517ab2655e8b32b379e768869754c66b338.png)  
 
 We get data, so it is working, but it is not secure.
 
+#### Secure ASP.NET Core Web API
+
 Let's make our `ASP.NET Core Web API` app secure.
+
+Open the `Package Manager Console`:
+
+![Package Manager Console](images/03f5c4e383d139e2d044e1dd8527d5ca62bb8d1a1132ab44fec57af20fc91eee.png)  
+
+And add the following `NuGet` packages:
+
+- Microsoft.AspNetCore.Authentication.JwtBearer
+- Microsoft.Identity.Web
+- Microsoft.Identity.Web.MicrosoftGraph
+- Microsoft.Identity.Web.UI
+
+By running the following commands:
+
+```powershell
+install-package Microsoft.AspNetCore.Authentication.JwtBearer
+install-package Microsoft.Identity.Web
+install-package Microsoft.Identity.Web.MicrosoftGraph
+install-package Microsoft.Identity.Web.UI
+```
+
+Your project file should look like this:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.8" />
+    <PackageReference Include="Microsoft.Identity.Web" Version="1.25.1" />
+    <PackageReference Include="Microsoft.Identity.Web.MicrosoftGraph" Version="1.25.1" />
+    <PackageReference Include="Microsoft.Identity.Web.UI" Version="1.25.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3" />
+  </ItemGroup>
+
+</Project>
+```
+
+Open the *Program.cs* file and add the following using statements:
+
+```csharp
+using Microsoft.Identity.Web;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+```
+
+Below `var builder = WebApplication.CreateBuilder(args);`, add the following code:
+
+```csharp
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"))
+        .EnableTokenAcquisitionToCallDownstreamApi()
+            .AddMicrosoftGraph(builder.Configuration.GetSection("MicrosoftGraph"))
+            .AddInMemoryTokenCaches()
+            .AddDownstreamWebApi("DownstreamApi", builder.Configuration.GetSection("DownstreamApi"))
+            .AddInMemoryTokenCaches();
+builder.Services.AddAuthorization();
+```
+
+At the bottom, before `app.Run();` add the following two lines:
+
+```csharp
+app.UseAuthentication();
+app.UseAuthorization();
+```
+
+And finally, in the `app.MapGet("/weatherforecast"` code, add the following line after `.WithName("GetWeatherForecast")`:
+
+```csharp
+.RequireAuthorization()
+```
+
+The complete *Program.cs* file should look like this now:
+
+```csharp
+using Microsoft.Identity.Web;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"))
+        .EnableTokenAcquisitionToCallDownstreamApi()
+            .AddMicrosoftGraph(builder.Configuration.GetSection("MicrosoftGraph"))
+            .AddInMemoryTokenCaches()
+            .AddDownstreamWebApi("DownstreamApi", builder.Configuration.GetSection("DownstreamApi"))
+            .AddInMemoryTokenCaches();
+builder.Services.AddAuthorization();
+
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+
+var summaries = new[]
+{
+    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+};
+
+app.MapGet("/weatherforecast", () =>
+{
+    var forecast = Enumerable.Range(1, 5).Select(index =>
+        new WeatherForecast
+        (
+            DateTime.Now.AddDays(index),
+            Random.Shared.Next(-20, 55),
+            summaries[Random.Shared.Next(summaries.Length)]
+        ))
+        .ToArray();
+    return forecast;
+})
+.WithName("GetWeatherForecast")
+.RequireAuthorization();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.Run();
+
+internal record WeatherForecast(DateTime Date, int TemperatureC, string? Summary)
+{
+    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+}
+```
+
+The `ASP.NET Core Web API` app is secure now, but we need to add some IDs, and settings in the *appsettings.json* file.
+
+Open the *appsettings.json* file, and add the following section above the `"Logging"` section:
+
+```json
+  "AzureAd": {
+    "Instance": "",
+    "Domain": "",
+    "TenantId": "",
+    "ClientId": "",
+    "CallbackPath": "",
+    "Scopes": "",
+    "ClientSecret": "",
+    "ClientCertificates": []
+  },
+```
+
+#### Azure AD B2C App Registration
+
+In order to get the settings required, we need to create an `Azure AD B2C` app registration.
+
+Go to https://portal.azure.com and sign-in.
+
+>:blue_book: If you do not have an Azure account, you can sign-up for free at https://azure.microsoft.com/en-us/free/.
+
+Search for `Azure AD B2C`, and select it from the list:
+
+![Azure AD B2C](images/922a26951bdc95f9bdf7414f590207b1965966f6dd18cc08a3dccbd04bcece0a.png)  
+
+Click on `App registrations`.
+
+![App registrations](images/e0c28b7535f3a4c2f012c6b1e719a64feadc83fa433d391bc041be28c50f6da7.png)  
+
+Then click on `Add new registration`.
+
+![Add new registration](images/a63f6cb2db52bf7636df5ab0931816849ba2efc11c05ed8e27ad801e453a9e72.png)  
+
+Fill-out the following values and click `Register`.
+
+![App registration settings](images/433cb2093cb642887781450663692328c45eb134b4953d426ab2fd4ee4a16f2e.png)  
+
+You will be presented with the Overview page, which has useful information such as Application ID, and Tenant ID. There are also some valuable links to quick start guides. Feel free to look around.
+
+![Overview](images/ac55f5c05dc8fa34a946fb7e53bff4164da0da3a39d7fadca423cd22f625d8b1.png)  
+
+Copy the `Application (client) ID` value, and use that to fill the `"ClientId"` setting, and then copy the `Directory (tenant) ID` value to fill the `"TenantId"` setting in the *appsettings.json* file.
+
+Set Instance to `https://login.microsoftonline.com/`, and CallbackPath to `"/signin-oidc"`.
+
+For the `"Domain"`, go to `Branding & properties`, and copy the value under `Publisher domain`.
+
+![Publisher domain](images/7b4743d631018c6faaa3c2d052b94e899b0557543865541a6814cc3f7c51e446.png)  
+
+Now, we need to create a client secret. Go to `Certificates & secrets`, then click on `+ New client secret`, give it a description, set an expiration option, and click on the `Add` button.
+
+![Certificates & secrets](images/6f1f5900ec8ab13ad9121ebb21015b36153c0b2ab8cab04dcdf4c839967e4594.png)  
+
+This will generate a client secret. Copy the value, paste it under the `"ClientSecret"` setting in the *appsettings.json* file.
+
+![Client Secret](images/e896d4a77017ca6c09ec41443c2ec52a0656e51c5c518939db033d1b85e01e64.png)  
+
+>:warning: The client secret will only display at this moment; if you move to another screen, you will not be able to retrieve the value anymore. You may choose to store this value safely at this point in `Azure Key Vault`, or some other safe location. If you lose it, you will have to create a new client secret.
+
+Finally, set the `"Scopes"` value to `"access_as_user"` which we are going to configure in `Azure AD B2C` after we deploy our application to Azure in the next section.
+
+The complete *appsettings.json* should look like this:
+
+```json
+{
+  "AzureAd": {
+    "Instance": "https://login.microsoftonline.com/",
+    "Domain": "*********.onmicrosoft.com",
+    "TenantId": "********-****-****-*****************",
+    "ClientId": "13e64f59-38fb-4497-80d2-0a0f939564b3",
+    "CallbackPath": "/signin-oidc",
+    "Scopes": "access_as_user",
+    "ClientSecret": "eoc8Q~9HZMliF5NY1***********************",
+    "ClientCertificates": []
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+```
+
+>:point_up: Some values were replaced with asterisks for security reasons.
+
+Build and run the application, expand `GET /weatherforecast` again, click on `Try it out`, then on `Execute`.
+
+This time, you should get an Unauthorized 401 HTTP code back.
+
+![Secure Web API](images/415ae4efaba3c8dacd9ca679ad020f2082bb14a8663e2a76b10510731bdd2ec8.png)  
+
+Our Web API application is secure!
+
+#### Deploy ASP.NET Core Web API to Azure
+
 
 
 
@@ -95,9 +350,9 @@ The complete code for this demo can be found in the link below.
 
 ## Resources
 
-| Resource Title                                          | Url                                                                             |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| The .NET Show with Carl Franklin                        | <https://www.youtube.com/playlist?list=PL8h4jt35t1wgW_PqzZ9USrHvvnk8JMQy_>      |
-| Download .NET                                           | <https://dotnet.microsoft.com/en-us/download>                                   |
-| Overview of the Microsoft Authentication Library (MSAL) | <https://docs.microsoft.com/en-us/azure/active-directory/develop/msal-overview> |
-| Minimal APIs overview                                          | <https://docs.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis?view=aspnetcore-6.0>                |
+| Resource Title                                          | Url                                                                                          |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| The .NET Show with Carl Franklin                        | <https://www.youtube.com/playlist?list=PL8h4jt35t1wgW_PqzZ9USrHvvnk8JMQy_>                   |
+| Download .NET                                           | <https://dotnet.microsoft.com/en-us/download>                                                |
+| Overview of the Microsoft Authentication Library (MSAL) | <https://docs.microsoft.com/en-us/azure/active-directory/develop/msal-overview>              |
+| Minimal APIs overview                                   | <https://docs.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis?view=aspnetcore-6.0> |
